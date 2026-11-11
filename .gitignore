@@ -15,6 +15,7 @@ web/runs/
 problems/*/build/
 problems/*/data/
 problems/*/bin/
+problems/_failed/
 problems/ai-problem-*/
 problems/ai-dp-*/
 
