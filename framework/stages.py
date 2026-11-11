@@ -161,20 +161,31 @@ def stage_solve(prob, args):
         detail["issues"].append("gen.py 未声明 FUZZ_MID，跳过中数据对拍")
     else:
         mid_total = max(20, args.fuzz // 5)
+        # ref 只需要在中等规模（n≤200 之类）跑得动，不该给 20 秒。
+        # 给太大，一个写慢了的实现会把 60 组 × 40 秒全拖满，看起来就像卡死。
+        mid_to = max(2.0, min(prob.limit * 3, 10.0))
         print(f"开始中数据对拍（sol vs ref，共 {mid_total} 组）", flush=True)
+        ref_tle = 0
         for it in range(mid_total):
             if (it + 1) % 10 == 0:
                 print(f"中数据对拍 {it + 1}/{mid_total}", flush=True)
             name = midfuzz[it % len(midfuzz)]
             rng = random.Random(f"{prob.id}/mid/{it}")
             data = prob.templates[name](rng, _fuzz_ctx(prob, mid=True)).encode()
-            a, _, sa = runner.run(sol, data, limit * 4)
-            b, _, sb = runner.run(ref, data, limit * 4)
+            a, _, sa = runner.run(sol, data, mid_to)
+            b, _, sb = runner.run(ref, data, mid_to)
             detail["mid"]["n"] += 1
             if sa != "OK" or sb != "OK":
                 detail["mid"]["fail"].append({"it": it, "tmpl": name, "why": f"运行异常 {sa}/{sb}"})
+                if sb == "TLE":
+                    ref_tle += 1
+                    if ref_tle >= 3:
+                        detail["issues"].append(
+                            f"4 号的实现在中数据上连续 {ref_tle} 组超时（超过 {mid_to:.0f} 秒）。"
+                            f"它只需要在中等规模跑得动，现在这个写法复杂度太高了，请降低复杂度。")
+                        break
                 continue
-            if tokens(a) == tokens(b):
+            if same_answer(a, b):
                 detail["mid"]["pass"] += 1
             else:
                 detail["mid"]["fail"].append(

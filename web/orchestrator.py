@@ -501,6 +501,10 @@ class Run:
             self.log("题面占位符补齐了", "ok")
 
         # 查重：和题库里已有的题撞了就打回重出
+        # mock 模式只能回放同一道题，查重必然撞车，自检时跳过
+        if str((self.slots[0] or {}).get("base_url", "")).startswith("mock"):
+            self.log("mock 模式，跳过查重（回放素材只有一套）", "info")
+            return True, ""
         spec_text = _read(os.path.join(self.prob_dir, "spec.py"))
         mt = re.search(r"TITLE\s*=\s*[\"'](.+?)[\"']", spec_text)
         mg = re.search(r"TAGS\s*=\s*\[(.*?)\]", spec_text, re.DOTALL)
