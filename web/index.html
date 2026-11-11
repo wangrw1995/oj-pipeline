@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OI 命题流水线</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --line:#262b36; --text:#d7dce5; --dim:#8b94a6;
+    --acc:#4f8cff; --ok:#3ecf8e; --warn:#f5a524; --bad:#f31260;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+       font:14px/1.6 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
+  header{padding:14px 20px;border-bottom:1px solid var(--line);
+         display:flex;align-items:center;gap:14px;background:var(--panel)}
+  header h1{font-size:15px;margin:0;font-weight:600;letter-spacing:.3px}
+  header .tag{font-size:12px;color:var(--dim);border:1px solid var(--line);
+              padding:2px 8px;border-radius:20px}
+  main{display:grid;grid-template-columns:390px 1fr;gap:16px;padding:16px;
+       height:calc(100vh - 56px)}
+  .col{display:flex;flex-direction:column;gap:14px;min-height:0}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+        padding:14px;overflow:auto}
+  .card h2{font-size:13px;margin:0 0 10px;color:var(--dim);font-weight:600;
+           text-transform:uppercase;letter-spacing:.6px}
+  label{display:block;font-size:12px;color:var(--dim);margin:8px 0 3px}
+  input,select,textarea{width:100%;background:#0d1017;border:1px solid var(--line);
+    color:var(--text);border-radius:6px;padding:7px 9px;font:inherit;font-size:13px}
+  input:focus,textarea:focus{outline:none;border-color:var(--acc)}
+  textarea{resize:vertical;min-height:56px;font-family:ui-monospace,Consolas,monospace}
+  .row{display:flex;gap:8px}
+  .row>*{flex:1}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 8px}
+  .fld label{margin:4px 0 2px}
+  .fld.wide{grid-column:1 / -1}
+  button{background:var(--acc);color:#fff;border:0;border-radius:6px;
+         padding:9px 14px;font:inherit;font-weight:600;cursor:pointer}
+  button:hover{filter:brightness(1.1)}
+  button.ghost{background:transparent;border:1px solid var(--line);color:var(--text)}
+  button.mini{background:transparent;border:1px solid var(--line);color:var(--dim);
+              font-weight:400;font-size:11px;padding:3px 9px;border-radius:20px}
+  button.mini:hover{color:var(--text);border-color:var(--acc)}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  .slot{border:1px solid var(--line);border-radius:8px;padding:10px;margin-bottom:10px}
+  .slot h3{font-size:12px;margin:0 0 6px;color:var(--acc)}
+  .hint{font-size:11px;color:var(--dim);margin-top:4px}
+  .err{font-size:11px;color:var(--bad);margin-top:6px;line-height:1.6;display:none;
+       white-space:pre-wrap;word-break:break-word}
+  .err.on{display:block}
+  .menu{position:fixed;z-index:99;background:#12151c;border:1px solid var(--line);
+        border-radius:8px;max-height:300px;overflow-y:auto;padding:4px;
+        box-shadow:0 12px 34px rgba(0,0,0,.55);scrollbar-width:thin;
+        scrollbar-color:#4a5468 transparent}
+  .menu::-webkit-scrollbar{width:11px}
+  .menu::-webkit-scrollbar-track{background:transparent}
+  .menu::-webkit-scrollbar-thumb{background:#3a4252;border-radius:6px;
+        border:3px solid #12151c}
+  .menu::-webkit-scrollbar-thumb:hover{background:#556077}
+  .menu div{padding:6px 10px;font-size:12.5px;cursor:pointer;color:var(--dim);
+            border-radius:5px;font-family:ui-monospace,Consolas,monospace}
+  .menu div:hover,.menu div.sel{background:#1d2230;color:var(--text)}
+  .menu .empty{padding:8px 10px;color:var(--dim);font-size:12px;cursor:default}
+  .menu .empty:hover{background:none;color:var(--dim)}
+  #log{font-family:ui-monospace,Consolas,monospace;font-size:12.5px;
+       overflow:auto;flex:1;min-height:0}
+  #log .l{padding:2px 0;border-bottom:1px solid #1b1f27;display:flex;gap:10px}
+  #log .t{color:#4a5468;flex:0 0 52px;text-align:right}
+  #log .m{white-space:pre-wrap;word-break:break-word}
+  #log .info .m{color:#b9c2d1}
+  #log .ok .m{color:var(--ok)}
+  #log .warn .m{color:var(--warn)}
+  #log .bad .m{color:var(--bad)}
+  #log .phase .m{color:var(--acc);font-weight:600}
+  .pill{font-size:11px;padding:2px 9px;border-radius:20px;border:1px solid var(--line)}
+  .pill.running{color:var(--acc);border-color:var(--acc)}
+  .pill.done{color:var(--ok);border-color:var(--ok)}
+  .pill.failed{color:var(--bad);border-color:var(--bad)}
+  .files{display:flex;flex-wrap:wrap;gap:6px}
+  .files a{font-family:ui-monospace,monospace;font-size:12px;color:var(--dim);
+           border:1px solid var(--line);border-radius:5px;padding:2px 7px;cursor:pointer}
+  .files a:hover{color:var(--text);border-color:var(--acc)}
+  pre{margin:0;white-space:pre-wrap;word-break:break-word;
+      font-family:ui-monospace,Consolas,monospace;font-size:12.5px;color:#c7cfdb}
+  .grow{flex:1;min-height:0;display:flex;flex-direction:column}
+  .split{display:grid;grid-template-columns:1fr 1fr;gap:14px;flex:1;min-height:0}
+  .pane{display:flex;flex-direction:column;min-height:0}
+  .banner{display:none;margin:0 0 8px;padding:9px 11px;border-radius:7px;
+          background:rgba(243,18,96,.13);border:1px solid rgba(243,18,96,.5);
+          color:#ff8fb3;font-size:12.5px;white-space:pre-wrap;line-height:1.6}
+  .banner.on{display:block}
+  .live{flex:1;overflow:auto;min-height:0;margin:0;font-size:12px;line-height:1.55;
+        color:#9fb0c6;white-space:pre-wrap;word-break:break-word;
+        font-family:ui-monospace,Consolas,monospace}
+  .live-think{display:none;max-height:42%;overflow:auto;font-size:11.5px;line-height:1.5;
+              color:#6b7688;white-space:pre-wrap;word-break:break-word;
+              font-family:ui-monospace,Consolas,monospace;
+              border-bottom:1px dashed var(--line);margin-bottom:8px;padding-bottom:8px}
+  .live-think.on{display:block}
+  .muted{color:var(--dim);font-size:12px}
+  details.card summary{list-style:none;outline:none}
+  details.card summary::-webkit-details-marker{display:none}
+  details.card summary::after{content:"▾";float:right;color:var(--dim)}
+  details.card[open] summary::after{content:"▴"}
+</style>
+</head>
+<body>
+<header>
+  <h1>OI 命题流水线</h1>
+  <span class="tag">1 号写 · 2 号审 · 3/4 号验 · 机器判</span>
+  <span id="runState" class="pill">未开始</span>
+  <span id="runId" class="muted"></span>
+</header>
+
+<main>
+  <div class="col">
+    <div class="card" style="flex:0 0 auto">
+      <h2>命题种子</h2>
+      <label>考点</label>
+      <input id="topic" placeholder="二分答案 + 单调栈">
+      <label>难度</label>
+      <input id="difficulty" placeholder="CSP-S T2">
+      <label>分档设想（可留空）</label>
+      <textarea id="ladder" placeholder="n≤2000 暴力 / h 单调不降 / 正解"></textarea>
+      <label>题号（可留空，自动生成）</label>
+      <input id="pid" placeholder="ai-binary-stack">
+      <label>出题数量（同一个考点，每道自动换一个子方向）</label>
+      <input id="count" type="number" min="1" max="20" value="1">
+      <div style="margin-top:12px">
+        <button id="startBtn" onclick="startRun()">开始出题</button>
+      </div>
+      <div id="batchBanner" class="hint" style="display:none;margin-top:8px"></div>
+      <div class="hint">会自动跑：写题面 → 审题 → 写标程 → 出数据 → 双份独立实现对拍 → 错解攻击 → 定标 → 题解 → 打包。</div>
+      <div class="hint">填大于 1 的数量会串行连着出，每道换一个子方向（换根DP / 树上背包 / 树的直径…），互不重复。</div>
+    </div>
+
+    <details class="card" style="flex:0 0 auto">
+      <summary><h2 style="display:inline;cursor:pointer">四个模型槽位</h2></summary>
+      <div id="slots" style="margin-top:10px"></div>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
+        <button class="ghost" onclick="saveCfg()" style="flex:0 0 auto">立即保存</button>
+        <span id="cfgState" class="hint" style="margin:0"></span>
+      </div>
+      <div class="hint">改完自动保存，不用点按钮。base_url 填到 <code>/v1</code> 为止即可，程序自动补 <code>/chat/completions</code>。
+        三个都可填 <code>mock</code>，在没有 API key 的情况下把全流程跑通。</div>
+    </details>
+
+    <div class="card" style="flex:0 0 auto">
+      <h2>历史运行</h2>
+      <div id="runs" class="files"></div>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="split">
+      <div class="card pane">
+        <h2>流水线日志</h2>
+        <div id="banner" class="banner"></div>
+        <div id="log"></div>
+      </div>
+      <div class="card pane">
+        <h2 id="liveHead">模型实时输出</h2>
+        <div id="liveThink" class="live-think"></div>
+        <pre id="live" class="live">（空闲）</pre>
+      </div>
+    </div>
+    <div class="card" style="flex:0 0 40%">
+      <h2>产物</h2>
+      <div id="files" class="files" style="margin-bottom:10px"></div>
+      <pre id="viewer" class="muted">点击上面的文件名查看内容</pre>
+    </div>
+  </div>
+</main>
+
+<script>
+let cfg = null, current = null, timer = null, lastLogLen = -1;
+
+const $ = id => document.getElementById(id);
+const el = (t, c, txt) => { const e = document.createElement(t); if (c) e.className = c;
+                            if (txt != null) e.textContent = txt; return e; };
+
+async function api(path, opt) {
+  const r = await fetch(path, opt);
+  return r.json();
+}
+
+/* ---------------- 配置 ---------------- */
+async function loadCfg() {
+  cfg = await api('/api/config');
+  const box = $('slots'); box.innerHTML = '';
+  cfg.slots.forEach((s, i) => {
+    const d = el('div', 'slot');
+    d.appendChild(el('h3', null, s.name));
+    const g = el('div', 'grid');
+    const mk = (label, key, ph, type, wide) => {
+      const wrap = el('div', 'fld' + (wide ? ' wide' : ''));
+      wrap.appendChild(el('label', null, label));
+      const inp = el('input');
+      inp.placeholder = ph || '';
+      if (type) inp.type = type;
+      inp.value = key === 'api_key' ? ''
+                : key === 'extra' ? (s.extra && Object.keys(s.extra).length ? JSON.stringify(s.extra) : '')
+                : (s[key] ?? '');
+      if (key === 'api_key') inp.placeholder = s.key_set ? '已设置，留空表示不改' : 'sk-...';
+      if (key === 'model') {
+        inp.autocomplete = 'off';
+        inp.addEventListener('focus', () => openMenu(i));
+        inp.addEventListener('click', () => openMenu(i));
+        inp.addEventListener('input', () => renderMenu(i));
+        inp.addEventListener('keydown', ev => {
+          if (ev.key === 'Escape') closeMenu(i);
+          else if (ev.key === 'ArrowDown') { ev.preventDefault(); openMenu(i); }
+          else if (ev.key === 'Enter') { closeMenu(i); ev.preventDefault(); }
+        });
+      }
+      if (key === 'base_url') inp.addEventListener('change', () => { if (inp.value) fetchModels(i); });
+      inp.addEventListener('change', scheduleSave);
+      inp.dataset.slot = i; inp.dataset.key = key;
+      wrap.appendChild(inp);
+      g.appendChild(wrap);
+    };
+    mk('名称', 'name');
+    mk('模型', 'model', 'deepseek-chat');
+    mk('base_url', 'base_url', 'https://api.deepseek.com/v1', null, true);
+    mk('api_key', 'api_key', '', 'password', true);
+    mk('最大输出', 'max_tokens', '留空 = 32768');
+    mk('温度', 'temperature', '留空 = 0.3');
+    mk('额外参数 JSON', 'extra', '{"thinking":{"type":"disabled"}}', null, true);
+    d.appendChild(g);
+    const bar = el('div', 'row');
+    const b = el('button', 'mini', '拉取模型列表');
+    b.dataset.fetch = i;
+    b.onclick = () => fetchModels(i);
+    bar.appendChild(b);
+    d.appendChild(bar);
+    const err = el('div', 'err'); err.dataset.err = i; d.appendChild(err);
+    box.appendChild(d);
+  });
+  if (location.hash === '#slots') document.querySelector('details.card').open = true;
+}
+
+/* ---------------- 模型下拉 ---------------- */
+const MODELS = {};        // slot -> 模型名数组
+let openSlot = null;
+
+function qsel(i, key) {
+  return document.querySelector(`input[data-slot="${i}"][data-key="${key}"]`);
+}
+
+function menuEl(i) {
+  let m = document.querySelector(`.menu[data-menu="${i}"]`);
+  if (!m) {
+    m = el('div', 'menu');
+    m.dataset.menu = i;
+    m.style.display = 'none';
+    document.body.appendChild(m);
+  }
+  return m;
+}
+
+function renderMenu(i) {
+  const m = menuEl(i);
+  if (m.style.display === 'none') return;
+  const inp = qsel(i, 'model');
+  const all = MODELS[i] || [];
+  const typed = (inp.value || '').trim().toLowerCase();
+  let list = all;
+  if (typed && !all.some(x => x.toLowerCase() === typed)) {
+    const f = all.filter(x => x.toLowerCase().includes(typed));
+    list = f.length ? f : all;      // 过滤不到就全列，避免看起来是空的
+  }
+  m.innerHTML = '';
+  if (!list.length) {
+    m.appendChild(el('div', 'empty', '还没有模型列表，先点「拉取模型列表」'));
+    return;
+  }
+  list.forEach(name => {
+    const d = el('div', null, name);
+    // 只对条目阻止默认行为（保住输入框焦点）；不要对容器阻止，
+    // 否则滚动条拖不动。
+    d.addEventListener('mousedown', e => e.preventDefault());
+    d.onclick = () => { inp.value = name; closeMenu(i); };
+    m.appendChild(d);
+  });
+}
+
+function openMenu(i) {
+  const inp = qsel(i, 'model');
+  const m = menuEl(i);
+  const r = inp.getBoundingClientRect();
+  m.style.left = r.left + 'px';
+  m.style.top = (r.bottom + 3) + 'px';
+  m.style.width = Math.max(r.width, 180) + 'px';
+  m.style.display = 'block';
+  openSlot = i;
+  renderMenu(i);
+}
+
+function closeMenu(i) {
+  menuEl(i).style.display = 'none';
+  if (openSlot === i) openSlot = null;
+}
+
+// 页面滚动 / 窗口缩放时，菜单跟着输入框走；滚出视野才关。
+// 注意：菜单内部的滚动不能触发关闭，否则一拖滚动条就没了。
+function syncMenu() {
+  if (openSlot === null) return;
+  const i = openSlot;
+  const inp = qsel(i, 'model');
+  const m = menuEl(i);
+  const r = inp.getBoundingClientRect();
+  if (r.bottom < 0 || r.top > window.innerHeight) { closeMenu(i); return; }
+  m.style.left = r.left + 'px';
+  m.style.top = (r.bottom + 3) + 'px';
+}
+
+window.addEventListener('scroll', e => {
+  const t = e.target;
+  if (t && t.nodeType === 1 && t.closest && t.closest('.menu')) return;  // 菜单内部滚动，忽略
+  syncMenu();
+}, true);
+window.addEventListener('resize', syncMenu);
+
+document.addEventListener('click', e => {
+  if (openSlot === null) return;
+  const t = e.target;
+  if (t.closest && t.closest('.menu')) return;
+  if (t.dataset && t.dataset.key === 'model') return;
+  closeMenu(openSlot);
+});
+
+async function fetchModels(i) {
+  const btn = document.querySelector(`button[data-fetch="${i}"]`);
+  const base_url = qsel(i, 'base_url').value, api_key = qsel(i, 'api_key').value;
+  if (!base_url) { alert('先填 base_url'); return; }
+  const old = btn.textContent;
+  const errBox = document.querySelector(`div[data-err="${i}"]`);
+  errBox.className = 'err'; errBox.textContent = '';
+  btn.disabled = true; btn.textContent = '拉取中…';
+  try {
+    const r = await api('/api/models', { method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slot: i, base_url, api_key }) });
+    if (r.error) {
+      btn.textContent = '拉取失败（可手填）';
+      errBox.className = 'err on';
+      errBox.textContent = r.error;
+      if (r.tried) errBox.textContent += '\n尝试过：' +
+        r.tried.map(t => `${t.url} → ${t.status ?? '连接失败'}`).join('；');
+      btn.title = r.error;
+    } else {
+      MODELS[i] = r.models;
+      const inp = qsel(i, 'model');
+      // 原来填的 mock 之类不在列表里，直接换成第一个，免得下拉按旧值过滤后是空的
+      if (!r.models.includes(inp.value)) inp.value = r.models[0];
+      btn.textContent = `共 ${r.models.length} 个，点模型框选`;
+      btn.title = r.models.join('\n') + '\n（来自 ' + r.url + '）';
+      openMenu(i);
+    }
+  } catch (e) {
+    btn.textContent = '拉取失败（可手填）';
+    errBox.className = 'err on';
+    errBox.textContent = String(e);
+  }
+  setTimeout(() => { btn.textContent = old; btn.disabled = false; }, 2600);
+}
+
+async function saveCfg(silent) {
+  const slots = cfg.slots.map((_, i) => {
+    const get = k => document.querySelector(`input[data-slot="${i}"][data-key="${k}"]`).value;
+    const mt = get('max_tokens'), tp = get('temperature'), ex = get('extra').trim();
+    let extra = {};
+    if (ex) {
+      try { extra = JSON.parse(ex); }
+      catch (e) { alert(`第 ${i + 1} 号的「额外参数 JSON」不是合法 JSON：\n${e.message}`); return null; }
+    }
+    return { name: get('name'), base_url: get('base_url'), model: get('model'),
+             api_key: get('api_key'),
+             max_tokens: mt ? Number(mt) : 0,
+             temperature: tp ? Number(tp) : 0.3,
+             extra };
+  });
+  if (slots.some(x => x === null)) return;
+  try {
+    await api('/api/config', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                               body: JSON.stringify({ slots }) });
+    cfgState(silent ? '已自动保存' : '已保存');
+  } catch (e) {
+    cfgState('保存失败：' + e); return;
+  }
+  if (!silent) loadCfg();
+}
+
+let saveTimer = null;
+function scheduleSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => saveCfg(true), 400);
+}
+
+let stateTimer = null;
+function cfgState(text) {
+  const el = $('cfgState');
+  if (!el) return;
+  el.textContent = text;
+  clearTimeout(stateTimer);
+  stateTimer = setTimeout(() => { el.textContent = ''; }, 2500);
+}
+
+/* ---------------- 运行 ---------------- */
+/* ---------------- 命题种子草稿 ---------------- */
+const DRAFT_KEY = 'oj_seed_draft';
+const DRAFT_FIELDS = ['topic', 'difficulty', 'ladder', 'pid'];
+
+function saveDraft() {
+  const d = {};
+  DRAFT_FIELDS.forEach(k => d[k] = $(k).value);
+  try { localStorage.setItem(DRAFT_KEY, JSON.stringify(d)); } catch (e) {}
+}
+
+function loadDraft() {
+  let d = {};
+  try { d = JSON.parse(localStorage.getItem(DRAFT_KEY) || '{}'); } catch (e) {}
+  DRAFT_FIELDS.forEach(k => { if (d[k]) $(k).value = d[k]; });
+}
+
+async function startRun() {
+  const body = { topic: $('topic').value, difficulty: $('difficulty').value,
+                 ladder: $('ladder').value, problem_id: $('pid').value };
+  if (!body.topic || !body.difficulty) { alert('考点和难度都要填'); return; }
+  const count = Math.max(1, Math.min(20, parseInt($('count').value || '1', 10) || 1));
+  $('startBtn').disabled = true;
+  saveDraft();
+  await saveCfg(true);            // 保证跑的就是屏幕上这套配置
+  $('log').innerHTML = '';
+  $('live').textContent = '（等待模型…）';
+  $('liveThink').className = 'live-think';
+  $('liveThink').textContent = '';
+  $('banner').className = 'banner';
+  lastLogLen = -1;
+
+  if (count > 1) {
+    // 批量：串行连着出，每道自动换一个子方向
+    const rb = await api('/api/batch', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                         body: JSON.stringify({ topic: body.topic, difficulty: body.difficulty,
+                                                                ladder: body.ladder, count }) });
+    if (rb.error) { alert(rb.error); $('startBtn').disabled = false; return; }
+    batchId = rb.batch_id;
+    $('batchBanner').style.display = '';
+    $('batchBanner').textContent = `批量任务已启动：共 ${count} 道，正在准备第 1 道…`;
+    pollBatch();
+    return;
+  }
+
+  batchId = null;
+  $('batchBanner').style.display = 'none';
+  const r = await api('/api/runs', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                     body: JSON.stringify(body) });
+  if (r.error) { alert(r.error); $('startBtn').disabled = false; return; }
+  current = r.run_id;
+  $('runId').textContent = r.problem_id;
+  poll();
+}
+
+// ---- 批量模式：轮询批量进度，跟着切换当前这一道 ----
+let batchId = null;
+async function pollBatch() {
+  if (!batchId) return;
+  const b = await api('/api/batch/' + batchId);
+  if (b.error) { setTimeout(pollBatch, 2000); return; }
+  const sub = b.subtype ? `（${b.subtype}）` : '';
+  $('batchBanner').textContent =
+    `批量出题：第 ${Math.max(1, b.current_index || 1)}/${b.count} 道${sub}` +
+    `　成功 ${b.ok_count || 0} / 已结束 ${b.done || 0}` +
+    (b.status === 'running' ? '' : `　— ${b.status === 'done' ? '全部完成' : '已停止'}`);
+  if (b.current_run_id && b.current_run_id !== current) {
+    current = b.current_run_id;
+    $('runId').textContent = b.current_problem || '';
+    $('log').innerHTML = '';
+    lastLogLen = -1;
+    poll();
+  }
+  if (b.status !== 'running') {
+    $('startBtn').disabled = false;
+    renderBatchResult(b);
+    return;
+  }
+  setTimeout(pollBatch, 2500);
+}
+
+function renderBatchResult(b) {
+  const lines = (b.results || []).map(r =>
+    `  ${r.index}. ${r.problem_id || '(未生成)'} ${r.subtype ? '· ' + r.subtype : ''} — ` +
+    (r.status === 'done' ? '成功' : '失败' + (r.error ? '：' + String(r.error).slice(0, 60) : ''))
+  ).join('\n');
+  $('batchBanner').textContent =
+    `批量结束：成功 ${b.ok_count || 0}/${b.count}\n` + lines;
+  $('batchBanner').style.whiteSpace = 'pre-wrap';
+}
+
+function renderLogs(logs) {
+  const box = $('log');
+  if (logs.length === lastLogLen) return;
+  lastLogLen = logs.length;
+  const nearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 60;
+  box.innerHTML = '';
+  logs.forEach(l => {
+    const d = el('div', 'l ' + (l.level || 'info'));
+    d.appendChild(el('span', 't', (l.t ?? 0) + 's'));
+    d.appendChild(el('span', 'm', l.msg));
+    box.appendChild(d);
+  });
+  if (nearBottom) box.scrollTop = box.scrollHeight;
+}
+
+async function pollLive() {
+  if (!current) return;
+  const r = await api('/api/runs/' + current + '/live');
+  const box = $('live'), head = $('liveHead'), think = $('liveThink');
+  if (!r || r.state === 'idle') {
+    head.textContent = '模型实时输出';
+    think.className = 'live-think'; think.textContent = '';
+    if (!box.textContent) box.textContent = '（空闲）';
+    return;
+  }
+  // 思考过程：推理模型大部分时间花在这里，显示出来才不至于干等
+  if (r.reasoning) {
+    const atBottom = think.scrollHeight - think.scrollTop - think.clientHeight < 40;
+    think.className = 'live-think on';
+    think.textContent = r.reasoning;
+    if (atBottom) think.scrollTop = think.scrollHeight;
+  } else {
+    think.className = 'live-think'; think.textContent = '';
+  }
+  const nearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 48;
+  box.textContent = r.text || (r.state === 'streaming' ? '…' : '（空）');
+  if (nearBottom) box.scrollTop = box.scrollHeight;
+  // 停滞检测：超过 20 秒没有新数据就把"最后数据 N 秒前"显示出来
+  const idle = r.tick ? Math.round(Date.now() / 1000 - r.tick) : 0;
+  const stall = (r.state === 'streaming' && idle > 20) ? ` · ⚠ ${idle}s 无新数据` : '';
+  let stage;
+  if (r.state === 'fallback') {
+    stage = ` · 已改用非流式请求（已等 ${idle}s，无实时输出）`;
+  } else if (r.state === 'streaming') {
+    stage = (r.text ? ' · 生成中' : (r.reasoning ? ' · 思考中' : ' · 等待')) + stall;
+  } else {
+    stage = (r.state === 'error' ? ' · 出错' : ' · 已完成');
+  }
+  head.textContent = `模型实时输出 · ${r.slot} 号 ${r.model || ''}${stage}`;
+}
+
+async function poll() {
+  if (!current) return;
+  const st = await api('/api/runs/' + current);
+  if (st.error) return;
+  $('runState').textContent = { running: '运行中', done: '已出厂', failed: '作废', pending: '排队' }[st.status] || st.status;
+  $('runState').className = 'pill ' + st.status;
+  const b = $('banner');
+  if (st.status === 'failed') {
+    b.className = 'banner on';
+    b.textContent = '作废原因：' + (st.error || '未知');
+  } else {
+    b.className = 'banner'; b.textContent = '';
+  }
+  renderLogs(st.logs || []);
+  await pollLive();
+  if (st.status === 'done' || st.status === 'failed') {
+    $('startBtn').disabled = false;
+    clearTimeout(timer);
+    loadTree();
+    return;
+  }
+  timer = setTimeout(poll, 800);
+}
+
+/* ---------------- 产物 ---------------- */
+async function loadTree() {
+  if (!current) return;
+  const r = await api(`/api/runs/${current}/tree`);
+  const box = $('files'); box.innerHTML = '';
+  (r.files || []).forEach(f => {
+    const a = el('a', null, f.path);
+    a.onclick = () => showFile(f.path);
+    box.appendChild(a);
+  });
+}
+
+async function showFile(path) {
+  const r = await api(`/api/runs/${current}/file?path=${encodeURIComponent(path)}`);
+  $('viewer').className = '';
+  $('viewer').textContent = r.error || r.content;
+}
+
+async function loadRuns() {
+  const r = await api('/api/runs');
+  const box = $('runs'); box.innerHTML = '';
+  const list = r.runs || [];
+  list.forEach(x => {
+    const a = el('a', null, `${x.problem_id} · ${x.status}`);
+    a.onclick = () => selectRun(x);
+    box.appendChild(a);
+  });
+  // 没有选中任何运行时，自动打开最近一次，免得右侧一片空白
+  if (!current && list.length) selectRun(list[0]);
+}
+
+function selectRun(x) {
+  current = x.run_id;
+  $('runId').textContent = x.problem_id;
+  $('log').innerHTML = '';
+  $('live').textContent = '（空闲）';
+  $('liveThink').className = 'live-think';
+  $('liveThink').textContent = '';
+  $('liveHead').textContent = '模型实时输出';
+  $('banner').className = 'banner';
+  lastLogLen = -1;
+  clearTimeout(timer);
+  poll();
+  loadTree();
+}
+
+loadDraft();
+DRAFT_FIELDS.forEach(k => $(k).addEventListener('input', saveDraft));
+loadCfg().then(loadRuns);
+setInterval(loadRuns, 8000);
+</script>
+</body>
+</html>

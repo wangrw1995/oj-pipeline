@@ -1,0 +1,46 @@
+{
+  "spec": [
+    ["problems/demo-pair/spec.py", "spec.py"],
+    ["problems/demo-pair/statement.md", "statement.md"],
+    ["problems/demo-pair/sample/pair1.in", "sample/s1.in"],
+    ["problems/demo-pair/sample/pair1.ans", "sample/s1.ans"],
+    ["problems/demo-pair/sample/pair2.in", "sample/s2.in"],
+    ["problems/demo-pair/sample/pair2.ans", "sample/s2.ans"]
+  ],
+  "review": [
+    ["web/mock/review.json", "review.json"]
+  ],
+  "brute_gen": [
+    ["web/mock/brute_pair.cpp", "brute.cpp"],
+    ["problems/demo-pair/gen.py", "gen.py"]
+  ],
+  "brute": [
+    ["web/mock/brute_pair.cpp", "brute.cpp"]
+  ],
+  "sol": [
+    ["problems/demo-pair/sol.cpp", "sol.cpp"],
+    ["web/mock/approach.md", "approach.md"]
+  ],
+  "review_code": [
+    ["web/mock/review_code.json", "review.json"]
+  ],
+  "impl_plan": [
+    ["web/mock/impl_plan.md", "impl_plan.md"]
+  ],
+  "impl_code": [
+    ["problems/demo-pair/ref.py", "ref.py"]
+  ],
+  "wrong": [
+    ["problems/demo-pair/wrong/first_last.py", "wrong/first_last.py"],
+    ["problems/demo-pair/wrong/half.py", "wrong/half.py"],
+    ["problems/demo-pair/wrong/sum_diff.py", "wrong/sum_diff.py"],
+    ["problems/demo-pair/wrong/allow.json", "wrong/allow.json"],
+    ["problems/demo-pair/partial/only_small.py", "partial/only_small.py"],
+    ["problems/demo-pair/partial/only_sorted.py", "partial/only_sorted.py"],
+    ["problems/demo-pair/partial/two_subtasks.py", "partial/two_subtasks.py"],
+    ["problems/demo-pair/partial/expected.json", "partial/expected.json"]
+  ],
+  "editorial": [
+    ["web/mock/editorial.md", "editorial.md"]
+  ]
+}

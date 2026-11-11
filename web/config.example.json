@@ -1,0 +1,44 @@
+{
+  "slots": [
+    {
+      "name": "1 号 作者",
+      "base_url": "https://ark.cn-beijing.volces.com/api/v3",
+      "api_key": "",
+      "model": "doubao-seed-2-0-pro-260215",
+      "temperature": 0.3,
+      "max_tokens": 64000,
+      "extra": {}
+    },
+    {
+      "name": "2 号 审题者",
+      "base_url": "https://ark.cn-beijing.volces.com/api/v3",
+      "api_key": "",
+      "model": "qwen3.7-flash-2026-07-15",
+      "temperature": 0.3,
+      "max_tokens": 64000,
+      "extra": {}
+    },
+    {
+      "name": "3 号 审查者",
+      "base_url": "https://ark.cn-beijing.volces.com/api/v3",
+      "api_key": "",
+      "model": "doubao-seed-2-0-lite-260428",
+      "temperature": 0.3,
+      "max_tokens": 64000,
+      "extra": {}
+    },
+    {
+      "name": "4 号 实现者",
+      "base_url": "https://ark.cn-beijing.volces.com/api/v3",
+      "api_key": "",
+      "model": "doubao-seed-2-0-code-preview-260215",
+      "temperature": 0.3,
+      "max_tokens": 64000,
+      "extra": {
+        "thinking": {
+          "type": "disabled"
+        }
+      }
+    }
+  ]
+}

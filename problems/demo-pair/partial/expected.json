@@ -1,0 +1,7 @@
+{
+  "_comment": "键是 partial/ 下的文件名（不含扩展名），值是期望得分；可以写 [下界, 上界] 表示容忍运气分",
+  "only_small": 20,
+  "only_sorted": 20,
+  "two_subtasks": 40,
+  "slow": 20
+}

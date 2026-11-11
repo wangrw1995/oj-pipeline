@@ -1,0 +1,6 @@
+{
+  "_comment": "键是 partial/ 下的文件名（不含扩展名），值是期望得分",
+  "only_n2": 30,
+  "only_sorted": 30,
+  "both": 60
+}

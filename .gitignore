@@ -1,0 +1,24 @@
+# 依赖与产物，不要提交
+__pycache__/
+*.py[cod]
+*.exe
+*.obj
+
+# 含 API key，绝不能提交
+web/config.json
+web/_cfg_backup.json
+
+# 运行日志与模型原始输出（体积大、含隐私信息）
+web/runs/
+
+# 题目产物：只保留 demo 参考题，AI 生成的题不入库
+problems/*/build/
+problems/*/data/
+problems/*/bin/
+problems/ai-problem-*/
+problems/ai-dp-*/
+
+# 编辑器
+.vscode/
+.idea/
+*.log
