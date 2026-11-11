@@ -63,13 +63,18 @@ def score_program(prob, runner, prog, answers, timeout):
 
 
 # ---------------------------------------------------------------- solve
+# 中数据对拍用的规模上限：ref 只要求能在中等规模跑得动
+MID_SCALE = 3000
+
+
 def _fuzz_ctx(prob, mid=False):
     """给对拍模板用的约束上下文。
 
     模板不对应某个具体子任务，但会读某个子任务才有的键。这里把所有子任务的键合并进来：
     - 小数据对拍：用子任务 1 的上限（规模小）
-    - 中数据对拍：用**最大**子任务的上限（否则模板会拿到 n_max=20 却想生成 n=500，
-      直接 ValueError: empty range）
+    - 中数据对拍：用最大子任务的上限，**但要把数值压到中等规模**——
+      ref 只被要求在"n ≤ 200 之类"跑得动，给它 1e5 的数据必然超时，
+      那就变成用大数据去要求中等实现了。
     """
     ctx = {}
     for sid in sorted(prob.subtasks):
@@ -77,6 +82,11 @@ def _fuzz_ctx(prob, mid=False):
     if mid:
         last = sorted(prob.subtasks)[-1]
         ctx.update(prob.subtasks[last])
+        for k, v in list(ctx.items()):
+            if isinstance(v, bool):
+                continue
+            if isinstance(v, (int, float)) and v > MID_SCALE:
+                ctx[k] = MID_SCALE
     elif 1 in prob.subtasks:
         ctx.update(prob.subtasks[1])
     return ctx
@@ -135,9 +145,11 @@ def stage_solve(prob, args):
         for it in range(args.fuzz):
             if (it + 1) % 50 == 0:
                 print(f"小数据对拍 {it + 1}/{args.fuzz}", flush=True)
-            name = fuzz[it % len(fuzz)]
+            name, over = fuzz[it % len(fuzz)]
             rng = random.Random(f"{prob.id}/fuzz/{it}")
-            data = prob.templates[name](rng, _fuzz_ctx(prob)).encode()
+            sctx = _fuzz_ctx(prob)
+            sctx.update(over)
+            data = prob.templates[name](rng, sctx).encode()
             a, _, sa = runner.run(sol, data, limit)
             b, _, sb = runner.run(brute, data, limit)
             detail["small"]["n"] += 1
@@ -163,27 +175,31 @@ def stage_solve(prob, args):
         mid_total = max(20, args.fuzz // 5)
         # ref 只需要在中等规模（n≤200 之类）跑得动，不该给 20 秒。
         # 给太大，一个写慢了的实现会把 60 组 × 40 秒全拖满，看起来就像卡死。
-        mid_to = max(2.0, min(prob.limit * 3, 10.0))
-        print(f"开始中数据对拍（sol vs ref，共 {mid_total} 组）", flush=True)
-        ref_tle = 0
+        mid_to = max(2.0, min(prob.limit * 2, 6.0))
+        print(f"开始中数据对拍（sol vs ref，共 {mid_total} 组，单组上限 {mid_to:.0f}s）", flush=True)
+        ref_bad = 0
         for it in range(mid_total):
             if (it + 1) % 10 == 0:
                 print(f"中数据对拍 {it + 1}/{mid_total}", flush=True)
-            name = midfuzz[it % len(midfuzz)]
+            name, over = midfuzz[it % len(midfuzz)]
             rng = random.Random(f"{prob.id}/mid/{it}")
-            data = prob.templates[name](rng, _fuzz_ctx(prob, mid=True)).encode()
+            ctx = _fuzz_ctx(prob, mid=True); ctx.update(over)
+            data = prob.templates[name](rng, ctx).encode()
             a, _, sa = runner.run(sol, data, mid_to)
             b, _, sb = runner.run(ref, data, mid_to)
             detail["mid"]["n"] += 1
             if sa != "OK" or sb != "OK":
-                detail["mid"]["fail"].append({"it": it, "tmpl": name, "why": f"运行异常 {sa}/{sb}"})
-                if sb == "TLE":
-                    ref_tle += 1
-                    if ref_tle >= 3:
-                        detail["issues"].append(
-                            f"4 号的实现在中数据上连续 {ref_tle} 组超时（超过 {mid_to:.0f} 秒）。"
-                            f"它只需要在中等规模跑得动，现在这个写法复杂度太高了，请降低复杂度。")
-                        break
+                detail["mid"]["fail"].append({"it": it, "tmpl": name,
+                                              "why": f"运行异常 {sa}/{sb}",
+                                              "std": sa, "ref": sb, "input": ""})
+                if sb != "OK":
+                    ref_bad += 1
+                # 累计失败（不是"连续"）：交替 TLE/RE 时也会被这个卡住
+                if ref_bad >= 5:
+                    detail["issues"].append(
+                        f"4 号的实现在中数据上有 {ref_bad} 组跑不动（超时或崩溃，单组上限 {mid_to:.0f} 秒）。"
+                        f"它只需要在中等规模跑得动，现在这个写法要么复杂度过高，要么有崩溃，请重写。")
+                    break
                 continue
             if same_answer(a, b):
                 detail["mid"]["pass"] += 1
@@ -280,9 +296,10 @@ def stage_gen(prob, args):
         bad = None
         skipped = 0
         for it in range(min(200, args.fuzz)):
-            name = fuzz[it % len(fuzz)]
+            name, over = fuzz[it % len(fuzz)]
             rng = random.Random(f"fuzz/{it}")
-            inp = prob.templates[name](rng, subs[1]).encode()
+            ctx = dict(subs[1]); ctx.update(over)
+            inp = prob.templates[name](rng, ctx).encode()
             a, _, sa = runner.run(sol, inp, limit)
             b, _, sb = runner.run(brute, inp, limit)
             if sa != "OK" or sb != "OK":
@@ -308,7 +325,10 @@ def stage_gen(prob, args):
     # 如果暴力全过，说明数据根本没造满约束，这题谁写暴力谁满分。
     if ok and brute is not None:
         answers = _load_answers(prob)
-        b_total, b_rows = score_program(prob, runner, brute, answers, limit)
+        # 只需要知道"暴力过不过得了"，不需要等它跑满时限。
+        # 跑 3 秒还没结果，就已经说明这个点它过不了了。
+        b_to = max(2.0, min(limit, 3.0))
+        b_total, b_rows = score_program(prob, runner, brute, answers, b_to)
         # score_program 的行状态是 AC / RE / TLE / WA，不是 runner 的 OK
         bad = [r for r in b_rows if r[1] != "AC"]
         if not bad:

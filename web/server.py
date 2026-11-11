@@ -391,7 +391,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def _file(self, rid, rel):
         run = load_run(rid)
-        base = os.path.join(PROBLEMS, run["problem_id"])
+        base = problem_dir(run["problem_id"])
         target = os.path.abspath(os.path.join(base, rel))
         if not target.startswith(os.path.abspath(base)):
             return self._json({"error": "非法路径"}, 400)
@@ -432,9 +432,18 @@ def load_run(rid):
     raise FileNotFoundError("没有这个运行")
 
 
+def problem_dir(pid):
+    """题目实际所在目录：成功的在 problems/，失败的在 problems/_failed/。"""
+    for base in (PROBLEMS, os.path.join(PROBLEMS, "_failed")):
+        d = os.path.join(base, pid)
+        if os.path.isdir(d):
+            return d
+    return os.path.join(PROBLEMS, pid)
+
+
 def list_tree(rid):
     run = load_run(rid)
-    base = os.path.join(PROBLEMS, run["problem_id"])
+    base = problem_dir(run["problem_id"])
     out = []
     if not os.path.isdir(base):
         return out

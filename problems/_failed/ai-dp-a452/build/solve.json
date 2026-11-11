@@ -1,0 +1,55 @@
+{
+  "ok": false,
+  "at": "2026-11-11T18:14:45",
+  "compiler": "C:\\w64devkit\\bin\\g++.EXE",
+  "compile_errors": [],
+  "issues": [
+    "4 号的实现在中数据上连续 3 组超时（超过 10 秒）。它只需要在中等规模跑得动，现在这个写法复杂度太高了，请降低复杂度。"
+  ],
+  "small": {
+    "n": 300,
+    "pass": 300,
+    "fail": []
+  },
+  "mid": {
+    "n": 4,
+    "pass": 0,
+    "fail": [
+      {
+        "it": 0,
+        "tmpl": "small",
+        "why": "运行异常 OK/RE",
+        "std": "OK",
+        "ref": "RE",
+        "input": ""
+      },
+      {
+        "it": 1,
+        "tmpl": "chain",
+        "why": "运行异常 OK/TLE",
+        "std": "OK",
+        "ref": "TLE",
+        "input": ""
+      },
+      {
+        "it": 2,
+        "tmpl": "normal",
+        "why": "运行异常 OK/TLE",
+        "std": "OK",
+        "ref": "TLE",
+        "input": ""
+      },
+      {
+        "it": 3,
+        "tmpl": "small",
+        "why": "运行异常 OK/TLE",
+        "std": "OK",
+        "ref": "TLE",
+        "input": ""
+      }
+    ],
+    "available": true
+  },
+  "stage": "solve",
+  "hash": "8c43a52adc775de8"
+}

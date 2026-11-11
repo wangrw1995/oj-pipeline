@@ -1,0 +1,24 @@
+{
+  "ok": true,
+  "at": "2026-11-11T17:06:13",
+  "compiler": "C:\\w64devkit\\bin\\g++.EXE",
+  "compile_errors": [
+    "ref: 编译失败\nC:/w64devkit/bin/ld.exe: cannot open output file E:\\oj工作区\\oj\\problems\\ai-dp-e064\\build\\bin\\ref.exe: Permission denied\ncollect2.exe: error: ld returned 1 exit status"
+  ],
+  "issues": [
+    "缺少 ref（独立实现），防不住标程错"
+  ],
+  "small": {
+    "n": 300,
+    "pass": 300,
+    "fail": []
+  },
+  "mid": {
+    "n": 0,
+    "pass": 0,
+    "fail": [],
+    "available": false
+  },
+  "stage": "solve",
+  "hash": "4bab9de9e0ab8011"
+}

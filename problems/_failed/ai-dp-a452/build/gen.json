@@ -1,0 +1,71 @@
+{
+  "ok": true,
+  "at": "2026-11-11T18:08:23",
+  "tests": [
+    {
+      "test": 1,
+      "sub": 1,
+      "template": "small",
+      "ok": true,
+      "size": 256,
+      "pts": 15,
+      "ms": 257.0,
+      "time_ratio": 0.0
+    },
+    {
+      "test": 2,
+      "sub": 1,
+      "template": "small",
+      "ok": true,
+      "size": 1194,
+      "pts": 15,
+      "ms": 6.2,
+      "time_ratio": 0.0
+    },
+    {
+      "test": 3,
+      "sub": 2,
+      "template": "chain",
+      "ok": true,
+      "size": 1706338,
+      "pts": 15,
+      "ms": 31.8,
+      "time_ratio": 0.0
+    },
+    {
+      "test": 4,
+      "sub": 2,
+      "template": "chain",
+      "ok": true,
+      "size": 1079859,
+      "pts": 15,
+      "ms": 20.4,
+      "time_ratio": 0.0
+    },
+    {
+      "test": 5,
+      "sub": 3,
+      "template": "normal",
+      "ok": true,
+      "size": 600278,
+      "pts": 20,
+      "ms": 19.9,
+      "time_ratio": 0.0
+    },
+    {
+      "test": 6,
+      "sub": 3,
+      "template": "normal",
+      "ok": true,
+      "size": 1617720,
+      "pts": 20,
+      "ms": 56.6,
+      "time_ratio": 0.0
+    }
+  ],
+  "growth": [],
+  "slow": [],
+  "msg": "",
+  "stage": "gen",
+  "hash": "85e56ce1f83ba3b2"
+}

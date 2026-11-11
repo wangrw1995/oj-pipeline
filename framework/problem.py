@@ -123,11 +123,27 @@ class Problem:
     def templates(self):
         return dict(getattr(self.gen, "TEMPLATES", {}))
 
+    @staticmethod
+    def _norm_fuzz(entries):
+        """把 FUZZ / FUZZ_MID 归一成 [(模板名, 覆盖参数)]。
+
+        约定是模板名字符串列表，但模型有时会写成 ("名字", {"max_n": 20}) 这种
+        带参数的元组。两种都接受，否则一个格式问题会被误判成"题面缺约定"。
+        """
+        out = []
+        for e in entries or ():
+            if isinstance(e, str):
+                out.append((e, {}))
+            elif isinstance(e, (list, tuple)) and e and isinstance(e[0], str):
+                extra = e[1] if len(e) > 1 and isinstance(e[1], dict) else {}
+                out.append((e[0], dict(extra)))
+        return out
+
     def fuzz_small(self):
-        return list(getattr(self.gen, "FUZZ", []))
+        return self._norm_fuzz(getattr(self.gen, "FUZZ", []))
 
     def fuzz_mid(self):
-        return list(getattr(self.gen, "FUZZ_MID", []))
+        return self._norm_fuzz(getattr(self.gen, "FUZZ_MID", []))
 
     # ---------------------------------------------------------------- 评分
     def sub_count(self, sub):
@@ -267,7 +283,22 @@ class Problem:
         if subs and used_total != 100:
             out.append(f"测试点分值合计 {used_total}，应为 100")
 
-        for name in self.fuzz_small() + self.fuzz_mid():
+        # 时限/内存的合理区间。模型偶尔会写出 LIMIT = 1000 这种值，
+        # 那会让后面所有超时判断按 1000 秒算，等于没有超时，整个流程会磨到天荒地老。
+        try:
+            lim = float(self.limit)
+        except Exception:
+            lim = -1.0
+        if not (0.1 <= lim <= 20):
+            out.append(f"LIMIT = {self.limit} 不合理：应写 0.5~10 之间（例如 LIMIT = 1）")
+        try:
+            mem = float(self.mem)
+        except Exception:
+            mem = -1.0
+        if not (16 <= mem <= 2048):
+            out.append(f"MEM = {self.mem} 不合理：应写 64~1024 MB")
+
+        for name, _over in self.fuzz_small() + self.fuzz_mid():
             if not spec_only and name not in tmpl:
                 out.append(f"FUZZ 引用了不存在的模板 {name!r}")
 

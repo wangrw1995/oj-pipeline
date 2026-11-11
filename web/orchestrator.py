@@ -500,6 +500,23 @@ class Run:
                                "样例用 {{SAMPLES}}，不能手写")
             self.log("题面占位符补齐了", "ok")
 
+        # 模型有时会写成 {{GLOBAL.mod}} 这种"变量访问"形式，渲染器不认，
+        # 会让 2 号审到原始模板。这里把多余的 .xxx 后缀去掉。
+        stmt = _read(os.path.join(self.prob_dir, "statement.md"))
+        cleaned = re.sub(r"\{\{\s*([A-Z_]+)\.[A-Za-z0-9_]+\s*\}\}", r"{{\1}}", stmt)
+        if cleaned != stmt:
+            _write(os.path.join(self.prob_dir, "statement.md"), cleaned)
+            self.log("题面里的 {{XXX.yyy}} 多余后缀已去掉", "warn")
+            stmt = cleaned
+        unknown = sorted(set(re.findall(r"\{\{([^{}]+)\}\}", stmt)) -
+                         {"TITLE", "LIMIT", "MEM", "CODE", "GLOBAL",
+                          "SUBTASK_TABLE", "SAMPLES"})
+        if unknown:
+            return False, ("题面里出现了渲染器不认识的占位符："
+                           + "、".join(f"{{{{{u}}}}}" for u in unknown)
+                           + "。只允许 {{TITLE}} {{LIMIT}} {{MEM}} {{CODE}} "
+                             "{{GLOBAL}} {{SUBTASK_TABLE}} {{SAMPLES}}，其它内容请直接写死。")
+
         # 查重：和题库里已有的题撞了就打回重出
         # mock 模式只能回放同一道题，查重必然撞车，自检时跳过
         if str((self.slots[0] or {}).get("base_url", "")).startswith("mock"):
@@ -824,9 +841,10 @@ class Run:
                 continue
             found = None
             for it in range(rounds):
-                nm = tmpl_names[it % len(tmpl_names)]
+                nm, over = tmpl_names[it % len(tmpl_names)]
+                c3 = dict(ctx); c3.update(over)
                 try:
-                    inp = p.templates[nm](random.Random(it * 7 + 1), ctx).encode()
+                    inp = p.templates[nm](random.Random(it * 7 + 1), c3).encode()
                 except Exception:
                     continue
                 # 反例必须是**合法输入**，否则让 1 号照着加测试点就是害他
@@ -1055,9 +1073,10 @@ class Run:
         if pa is None or pb is None:
             return False, "编译失败：" + "；".join(r.errors)
         for it in range(rounds):
-            name = names[it % len(names)]
+            name, over = names[it % len(names)]
+            c2 = dict(ctx); c2.update(over)
             try:
-                inp = p.templates[name](random.Random(f"fz/{it}"), ctx).encode()
+                inp = p.templates[name](random.Random(f"fz/{it}"), c2).encode()
             except Exception as e:
                 return False, f"模板 {name} 生成失败：{e}"
             x, _, sx = r.run(pa, inp, 20)
@@ -1295,6 +1314,20 @@ class Run:
             self.error = f"{type(e).__name__}: {e}"
             self.log(f"异常终止：{self.error}", "bad")
         finally:
+            # 成功和失败的题分开放：成功的留在 problems/，失败的挪到 problems/_failed/
+            # 这样 problems/ 里只看得到真正出完的题，查重库也不会被半成品污染。
+            if self.status != "done":
+                try:
+                    if os.path.isdir(self.prob_dir):
+                        dest_root = os.path.join(OJ_ROOT, "problems", "_failed")
+                        os.makedirs(dest_root, exist_ok=True)
+                        dest = os.path.join(dest_root, self.problem_id)
+                        if os.path.isdir(dest):
+                            shutil.rmtree(dest, ignore_errors=True)
+                        shutil.move(self.prob_dir, dest)
+                        self.log(f"失败产物已挪到 problems/_failed/{self.problem_id}")
+                except Exception as e:
+                    self.log(f"挪动失败产物时出错：{e}", "warn")
             self.save()
         return self.status
 

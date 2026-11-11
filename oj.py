@@ -17,6 +17,7 @@ oj —— 自动出题工作流命令行。
 """
 import argparse
 import os
+import shutil
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -241,6 +242,49 @@ def cmd_batch(args):
 
 
 # ---------------------------------------------------------------- 入口
+def _failed_root():
+    return os.path.join(PROBLEMS, "_failed")
+
+
+def cmd_revive(args):
+    """把 problems/_failed 里的题挪回 problems/，方便继续用命令行折腾。"""
+    src = os.path.join(_failed_root(), args.id)
+    dst = os.path.join(PROBLEMS, args.id)
+    if not os.path.isdir(src):
+        names = sorted(os.listdir(_failed_root())) if os.path.isdir(_failed_root()) else []
+        print(f"problems/_failed 里没有 {args.id}。")
+        if names:
+            print("  现有：" + "、".join(names))
+        return 1
+    if os.path.isdir(dst):
+        print(f"problems/{args.id} 已经存在，先删掉或改名再试。")
+        return 1
+    shutil.move(src, dst)
+    print(f"已移回 problems/{args.id}")
+    return 0
+
+
+def cmd_failed(args):
+    """列出被挪走的失败题，顺便标出它死在哪个阶段。"""
+    root = _failed_root()
+    if not os.path.isdir(root):
+        print("还没有失败产物")
+        return 0
+    names = sorted(d for d in os.listdir(root) if os.path.isdir(os.path.join(root, d)))
+    if not names:
+        print("还没有失败产物")
+        return 0
+    print(f"失败产物 {len(names)} 道（problems/_failed/）：")
+    for n in names:
+        note = ""
+        bj = os.path.join(root, n, "build", "build.json")
+        if os.path.exists(bj):
+            note = "  （已打包）"
+        print(f"  {n}{note}")
+    print("\n用 python oj.py revive <题号> 移回 problems/ 继续处理")
+    return 0
+
+
 def main(argv=None):
     setup_stdio()
     ap = argparse.ArgumentParser(prog="oj", description="自动出题工作流")
@@ -273,6 +317,13 @@ def main(argv=None):
     p.add_argument("--force", action="store_true")
     p.add_argument("--fuzz", type=int, default=300)
     p.set_defaults(func=cmd_batch)
+
+    p = sub.add_parser("revive", help="把失败题从 _failed 移回 problems")
+    p.add_argument("id")
+    p.set_defaults(func=cmd_revive)
+
+    p = sub.add_parser("failed", help="列出失败产物")
+    p.set_defaults(func=cmd_failed)
 
     p = sub.add_parser("status", help="闸门状态")
     p.set_defaults(func=cmd_status)
